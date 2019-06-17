@@ -1,0 +1,15 @@
+esiaf_input_topic: /esiaf_ros/segmented
+algorithm: MUSIC # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
+mic_array:
+    mic_1:
+        x: -1.0
+        y: -1.0
+    mic_2:
+        x: 1.0
+        y: -1.0
+    mic_3:
+        x: 1.0
+        y: 1.0
+    mic_4:
+        x: -1.0
+        y: 1.0
