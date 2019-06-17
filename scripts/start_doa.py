@@ -4,14 +4,25 @@ from esiaf_doa.doa_wrapper import DOA
 import pyesiaf
 import rospy
 from moveit_ros_planning_interface._moveit_roscpp_initializer import roscpp_init
-from esiaf_ros.msg import RecordingTimeStamps, AugmentedAudio
+from esiaf_ros.msg import RecordingTimeStamps, AugmentedAudio, SSLDir
 
 # config
 import yaml
 import sys
 
+# util
+import StringIO
+
+
+def msg_to_string(msg):
+    buf = StringIO.StringIO()
+    msg.serialize(buf)
+    return buf.getvalue()
+
+
 def msg_from_string(msg, data):
     msg.deserialize(data)
+
 
 nodename = 'esiaf_doa'
 
@@ -42,11 +53,18 @@ esiaf_format = pyesiaf.EsiafAudioFormat()
 esiaf_format.rate = pyesiaf.Rate.RATE_16000
 esiaf_format.bitrate = pyesiaf.Bitrate.BIT_INT_16_SIGNED
 esiaf_format.endian = pyesiaf.Endian.LittleEndian
-esiaf_format.channels = 1
+esiaf_format.channels = len(data['mic_array'])
 
 esiaf_audio_info = pyesiaf.EsiafAudioTopicInfo()
 esiaf_audio_info.topic = data['esiaf_input_topic']
 esiaf_audio_info.allowedFormat = esiaf_format
+
+
+rospy.loginfo('adding output topic...')
+esiaf_audio_out_info = pyesiaf.EsiafAudioTopicInfo()
+esiaf_audio_out_info.topic = data['esiaf_output_topic']
+esiaf_audio_out_info.allowedFormat = esiaf_format
+handler.add_output_topic(esiaf_audio_out_info)
 
 rospy.loginfo('adding input topic...')
 
@@ -57,12 +75,22 @@ def input_callback(audio, timeStamps):
     msg_from_string(_recording_timestamps, timeStamps)
 
     # call dao wrapper
-    dao = wrapper.process_audio(audio)
+    doa = wrapper.process_audio(audio)
+    rospy.loginfo('Current doa: ' + str(doa))
 
     # assemble output
+    doa_esiaf = SSLDir()
+    doa_esiaf.angleHorizontal = doa
+    doa_esiaf.angleVertical = 0.0
+    doa_esiaf.sourceId = 'no tracking'
+
+    doas = [doa_esiaf]
+    handler.set_ssl_dirs(doas)
 
     # publish output
-
+    handler.publish(data['esiaf_output_topic'],
+                    audio,
+                    msg_to_string(timeStamps))
 
 
 handler.add_input_topic(esiaf_audio_info, input_callback)

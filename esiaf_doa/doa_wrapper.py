@@ -1,5 +1,4 @@
 import pyroomacoustics as pra
-from pyroomacoustics.doa import circ_dist
 import numpy as np
 
 # algorithms parameters
@@ -21,6 +20,7 @@ def create_mic_config(config):
     complete = np.array([xes, ys])
     return complete
 
+
 class DOA:
 
     def __init__(self, config):
@@ -28,15 +28,9 @@ class DOA:
         self.mic_config = create_mic_config(config)
         self.doa = pra.doa.algorithms[algo_name](self.mic_config, fs, nfft, c=c, max_four=4)
 
-    def _prepare_audio(self, audio):
-        return audio
-
     def process_audio(self, audio):
-        # prepare signal
-        signal = self._prepare_audio(audio)
-
         # calculate doa
-        self.doa.locate_sources(signal, freq_bins=freq_bins)
+        self.doa.locate_sources(audio, freq_bins=freq_bins)
 
         # calculate doa in degrees
         doa = self.doa.azimuth_recon / np.pi * 180.
