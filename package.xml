@@ -17,6 +17,5 @@
     <run_depend>package</run_depend>
     <run_depend>std_msgs</run_depend>
     <run_depend>esiaf_ros</run_depend>
-    <run_depend>moveit_ros_planning_interface</run_depend>
 
 </package>

@@ -3,7 +3,6 @@
 from esiaf_doa.doa_wrapper import DOA
 import pyesiaf
 import rospy
-from moveit_ros_planning_interface._moveit_roscpp_initializer import roscpp_init
 from esiaf_ros.msg import RecordingTimeStamps, AugmentedAudio, SSLDir
 
 # config
@@ -28,7 +27,7 @@ nodename = 'esiaf_doa'
 
 # initialize rosnode
 rospy.init_node(nodename)
-roscpp_init(nodename, [])
+pyesiaf.roscpp_init(nodename, [])
 
 # read config
 rospy.loginfo('Loading config...')
@@ -42,8 +41,6 @@ data = yaml.safe_load(open(path_to_config))
 rospy.loginfo('Creating direction of arrival instance...')
 
 wrapper = DOA(data)
-
-# add data publisher
 
 rospy.loginfo('Creating esiaf handler...')
 handler = pyesiaf.Esiaf_Handler('esiad_doa', pyesiaf.NodeDesignation.SSL, sys.argv)
