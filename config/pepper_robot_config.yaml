@@ -1,16 +1,16 @@
-esiaf_input_topic: /esiaf_ros/segmented
+esiaf_input_topic: /input
 esiaf_output_topic: /esiaf_ros/ssled
-algorithm: MUSIC # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
+algorithm: SRP # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
 mic_array:
-    mic_1:
-        x: -0.0267
-        y: 0.0343
-    mic_2:
+    channel_1:
+        x: 0.0267
+        y: -0.0343
+    channel_2:
         x: -0.0267
         y: -0.0343
-    mic_3:
+    channel_3:
         x: 0.0313
         y: 0.0343
-    mic_4:
-        x: 0.0313
-        y: -0.0343
+    channel_4:
+        x: -0.0313
+        y: 0.0343
