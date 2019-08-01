@@ -3,8 +3,8 @@ esiaf_output_topic: /esiaf_ros/ssled
 algorithm: SRP # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
 mic_array:
     channel_1:
-        x: 0.0267
-        y: -0.0343
+        x: -0.0267
+        y: 0.0343
     channel_2:
         x: -0.0267
         y: -0.0343
@@ -12,5 +12,5 @@ mic_array:
         x: 0.0313
         y: 0.0343
     channel_4:
-        x: -0.0313
-        y: 0.0343
+        x: 0.0313
+        y: -0.0343

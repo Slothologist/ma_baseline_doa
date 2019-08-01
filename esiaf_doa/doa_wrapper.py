@@ -1,11 +1,14 @@
 import pyroomacoustics as pra
 import numpy as np
+import matplotlib.pyplot as plt
+import threading
+import time
 
 # algorithms parameters
 SNR = 3.    # signal-to-noise ratio
 fs = 16000  # sampling frequency
 nfft = 256  # FFT size
-freq_range = [300, 3500]  # frequency range over which to perform doa
+freq_range = [10, 10000]  # frequency range over which to perform doa
 
 
 def create_mic_config(config):
@@ -27,6 +30,33 @@ class DOA:
         self.mic_config = create_mic_config(config)
         self.doa = pra.doa.algorithms[self.algo_name](self.mic_config, fs, nfft, num_src=1, max_four=4)
 
+        spatial_resp = [0.0 for _ in range(360)]
+        self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
+
+        self.lock = threading.Lock()
+
+        def plot_thread():
+            plt.ion()
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='polar')
+            phi_plt = self.doa.grid.azimuth
+            c_phi_plt = np.r_[phi_plt, phi_plt[0]]
+            line1, = ax.plot(c_phi_plt, 1. + 10. * self.c_dirty_img, linewidth=3,
+                    alpha=0.55, linestyle='-',
+                    label="spatial spectrum")
+
+            while True:
+                with self.lock:
+                    line1.set_ydata(1. + 10. * self.c_dirty_img)
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+                time.sleep(0.1)
+
+        t = threading.Thread(target=plot_thread)
+        t.start()
+
+
+
     @staticmethod
     def _preprocessing(audio):
         X = np.array([pra.stft(signal, nfft, nfft // 2, transform=np.fft.rfft).T for signal in audio])
@@ -34,7 +64,6 @@ class DOA:
 
     def process_audio(self, audio):
         # bring audio to frequency domain
-        # freq = self._calc_freq_domain(audio)
         X = self._preprocessing(audio)
 
         # calculate doa
@@ -42,5 +71,13 @@ class DOA:
 
         # calculate doa in degrees
         doa = self.doa.azimuth_recon / np.pi * 180.
+        spatial_resp = self.doa.grid.values
+        min_val = spatial_resp.min()
+        max_val = spatial_resp.max()
+        spatial_resp = (spatial_resp - min_val) / (max_val - min_val)
+        print(spatial_resp.shape)
+
+        with self.lock:
+            self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
 
         return doa[0]
