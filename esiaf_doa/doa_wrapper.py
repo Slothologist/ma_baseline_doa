@@ -47,7 +47,7 @@ class DOA:
 
             while True:
                 with self.lock:
-                    line1.set_ydata(1. + 10. * self.c_dirty_img)
+                    line1.set_ydata(self.c_dirty_img)
                 fig.canvas.draw()
                 fig.canvas.flush_events()
                 time.sleep(0.1)
@@ -75,7 +75,6 @@ class DOA:
         min_val = spatial_resp.min()
         max_val = spatial_resp.max()
         spatial_resp = (spatial_resp - min_val) / (max_val - min_val)
-        print(spatial_resp.shape)
 
         with self.lock:
             self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
