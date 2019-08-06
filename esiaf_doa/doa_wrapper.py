@@ -9,14 +9,14 @@ except:
     import_successful = False
 else:
     import_successful = True
-from esiaf_doa import noise_mean, noise_min
+import math
 
 
 # algorithms parameters
-SNR = 3.    # signal-to-noise ratio
+SNR = 25.    # signal-to-noise ratio
 fs = 16000  # sampling frequency
 nfft = 256  # FFT size
-freq_range = [10, 10000]  # frequency range over which to perform doa
+freq_range = [4000, 8000]  # frequency range over which to perform doa
 
 
 def create_mic_config(config):
@@ -43,22 +43,33 @@ class DOA:
         if self.plot and import_successful:
             spatial_resp = [0.0 for _ in range(360)]
             self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
+            self.magnitude = [0. for _ in range(nfft//2)]
 
             self.lock = threading.Lock()
 
             def plot_thread():
                 plt.ion()
                 fig = plt.figure()
-                ax = fig.add_subplot(111, projection='polar')
+                ax = fig.add_subplot(211, projection='polar')
                 phi_plt = self.doa.grid.azimuth
                 c_phi_plt = np.r_[phi_plt, phi_plt[0]]
                 line1, = ax.plot(c_phi_plt, 1. + 10. * self.c_dirty_img, linewidth=3,
                         alpha=0.55, linestyle='-',
                         label="spatial spectrum")
+                ax.set_title("spatial spectrum")
+
+                fre = [i * fs / 256 for i in range(nfft//2)]
+                bx = fig.add_subplot(212)
+                line2,  = bx.plot(fre, [0. for _ in fre])
+                bx.set_ylim(0, 1)
+                bx.set_title('frequency graph')
+                bx.set_ylabel('Intensity (normalized)')
+                bx.set_xlabel('Frequency in Hz')
 
                 while True:
                     with self.lock:
                         line1.set_ydata(self.c_dirty_img)
+                        line2.set_ydata(self.magnitude)
                     fig.canvas.draw()
                     fig.canvas.flush_events()
                     time.sleep(0.1)
@@ -96,7 +107,23 @@ class DOA:
             if self.algo_name == 'FRIDA':
                 spatial_resp = np.abs(self.doa._gen_dirty_img())
 
+            def window_func(window):
+                def hamming(n, N):
+                    a = 0.54
+                    b = 1 - a
+                    ret = a - b * math.cos(2 * math.pi * n / (N - 1))
+                    return ret
+                return [hamming(index, len(window)) * wert for index, wert in enumerate(window)]
+
+            freq = np.fft.fft(np.array(window_func(audio[0][:nfft])), nfft)
+            freq = freq[:nfft//2]
+            mag = np.array([(x.real*x.real + x.imag*x.imag) for x in freq])
+            min_val = mag.min()
+            max_val = mag.max()
+            mag = (mag - min_val) / (max_val - min_val)
             with self.lock:
+                self.magnitude = mag
                 self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
+
 
         return doa[0]
