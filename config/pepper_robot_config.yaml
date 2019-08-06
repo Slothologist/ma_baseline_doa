@@ -1,6 +1,7 @@
 esiaf_input_topic: /input
 esiaf_output_topic: /esiaf_ros/ssled
 algorithm: SRP # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
+plot_spectra: True
 mic_array:
     channel_1:
         x: -0.0267

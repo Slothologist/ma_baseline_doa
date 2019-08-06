@@ -1,8 +1,16 @@
 import pyroomacoustics as pra
 import numpy as np
-import matplotlib.pyplot as plt
-import threading
-import time
+import_successful = None
+try:
+    import matplotlib.pyplot as plt
+    import threading
+    import time
+except:
+    import_successful = False
+else:
+    import_successful = True
+from esiaf_doa import noise_mean, noise_min
+
 
 # algorithms parameters
 SNR = 3.    # signal-to-noise ratio
@@ -25,35 +33,40 @@ def create_mic_config(config):
 
 class DOA:
 
-    def __init__(self, config):
+    def __init__(self, config, plot=False):
         self.algo_name = config['algorithm']
         self.mic_config = create_mic_config(config)
         self.doa = pra.doa.algorithms[self.algo_name](self.mic_config, fs, nfft, num_src=1, max_four=4)
+        self.plot = plot
+        self.noise_matrix = np.array([1.0 for _ in range(360)])
 
-        spatial_resp = [0.0 for _ in range(360)]
-        self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
+        if self.plot and import_successful:
+            spatial_resp = [0.0 for _ in range(360)]
+            self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
 
-        self.lock = threading.Lock()
+            self.lock = threading.Lock()
 
-        def plot_thread():
-            plt.ion()
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='polar')
-            phi_plt = self.doa.grid.azimuth
-            c_phi_plt = np.r_[phi_plt, phi_plt[0]]
-            line1, = ax.plot(c_phi_plt, 1. + 10. * self.c_dirty_img, linewidth=3,
-                    alpha=0.55, linestyle='-',
-                    label="spatial spectrum")
+            def plot_thread():
+                plt.ion()
+                fig = plt.figure()
+                ax = fig.add_subplot(111, projection='polar')
+                phi_plt = self.doa.grid.azimuth
+                c_phi_plt = np.r_[phi_plt, phi_plt[0]]
+                line1, = ax.plot(c_phi_plt, 1. + 10. * self.c_dirty_img, linewidth=3,
+                        alpha=0.55, linestyle='-',
+                        label="spatial spectrum")
 
-            while True:
-                with self.lock:
-                    line1.set_ydata(self.c_dirty_img)
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-                time.sleep(0.1)
+                while True:
+                    with self.lock:
+                        line1.set_ydata(self.c_dirty_img)
+                    fig.canvas.draw()
+                    fig.canvas.flush_events()
+                    time.sleep(0.1)
 
-        t = threading.Thread(target=plot_thread)
-        t.start()
+            t = threading.Thread(target=plot_thread)
+            t.start()
+        else:
+            self.plot = False
 
 
 
@@ -71,12 +84,19 @@ class DOA:
 
         # calculate doa in degrees
         doa = self.doa.azimuth_recon / np.pi * 180.
-        spatial_resp = self.doa.grid.values
-        min_val = spatial_resp.min()
-        max_val = spatial_resp.max()
-        spatial_resp = (spatial_resp - min_val) / (max_val - min_val)
 
-        with self.lock:
-            self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
+        if self.plot:
+            spatial_resp = self.doa.grid.values
+            min_val = spatial_resp.min()
+            max_val = spatial_resp.max()
+            spatial_resp = (spatial_resp - min_val) / (max_val - min_val)
+            #spatial_resp = (spatial_resp - noise_min) /noise_min
+            #self.noise_matrix = [self.noise_matrix[i] if self.noise_matrix[i] < spatial_resp[i] else spatial_resp[i] for i in range(0,360)]
+
+            if self.algo_name == 'FRIDA':
+                spatial_resp = np.abs(self.doa._gen_dirty_img())
+
+            with self.lock:
+                self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
 
         return doa[0]

@@ -43,7 +43,7 @@ ssl_publisher = rospy.Publisher(nodename + '/' + 'SSL', SSLInfo, queue_size=10)
 
 rospy.loginfo('Creating direction of arrival instance...')
 
-wrapper = DOA(data)
+wrapper = DOA(data, plot=data['plot_spectra'])
 
 rospy.loginfo('Creating esiaf handler...')
 handler = pyesiaf.Esiaf_Handler(nodename, pyesiaf.NodeDesignation.SSL, sys.argv)
@@ -107,5 +107,10 @@ handler.start_esiaf()
 
 rospy.loginfo('DOA ready!')
 rospy.spin()
+rospy.loginfo('Exiting...')
+
+#noise_mean = wrapper.noise_matrix
+#stri = '[' + ','.join([str(x) for x in noise_mean]) + ']'
+#rospy.loginfo(stri)
 
 handler.quit_esiaf()
