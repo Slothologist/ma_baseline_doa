@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-    <name>esiaf_doa</name>
+    <name>ma_baseline_doa</name>
     <version>0.0.1</version>
     <description>A simple Direction of Arrival node for the esiaf_ros framework</description>
 
@@ -11,11 +11,12 @@
     <buildtool_depend>catkin</buildtool_depend>
     <build_depend>rospy</build_depend>
     <build_depend>std_msgs</build_depend>
-    <build_depend>esiaf_ros</build_depend>
+    <build_depend>pepper_clf_msgs</build_depend>
 
     <run_depend>rospy</run_depend>
     <run_depend>package</run_depend>
     <run_depend>std_msgs</run_depend>
-    <run_depend>esiaf_ros</run_depend>
+    <run_depend>pepper_clf_msgs</run_depend>
+
 
 </package>

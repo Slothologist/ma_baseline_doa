@@ -1,0 +1,4 @@
+<launch>
+<arg name="path_to_config" />
+<node name="ma_baseline_doa" pkg="ma_baseline_doa" type="start_doa.py" output="screen" args="$(arg path_to_config)" />
+</launch>

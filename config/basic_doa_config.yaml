@@ -1,5 +1,3 @@
-esiaf_input_topic: /esiaf_ros/segmented
-esiaf_output_topic: /esiaf_ros/ssled
 algorithm: MUSIC # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
 mic_array:
     mic_1:

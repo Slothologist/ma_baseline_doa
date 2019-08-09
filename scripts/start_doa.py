@@ -1,33 +1,24 @@
 #!/usr/bin/env python
 
 from esiaf_doa.doa_wrapper import DOA
-import pyesiaf
+import genpy
 import rospy
-from esiaf_ros.msg import RecordingTimeStamps, AugmentedAudio, SSLDir, SSLInfo
+import alsaaudio
+from threading import Lock, Thread
+import numpy as np
+from collections import deque
+from pepper_clf_msgs.srv import SynchronizedSSL, SynchronizedSSLResponse
 
 # config
 import yaml
 import sys
 
-# util
-import StringIO
 
 
-def msg_to_string(msg):
-    buf = StringIO.StringIO()
-    msg.serialize(buf)
-    return buf.getvalue()
-
-
-def msg_from_string(msg, data):
-    msg.deserialize(data)
-
-
-nodename = 'esiaf_doa'
+nodename = 'ma_baseline_doa'
 
 # initialize rosnode
 rospy.init_node(nodename)
-pyesiaf.roscpp_init(nodename, [])
 
 # read config
 rospy.loginfo('Loading config...')
@@ -38,79 +29,75 @@ if len(argv) < 2:
 path_to_config = argv[1]
 data = yaml.safe_load(open(path_to_config))
 
-rospy.loginfo('Adding SSLInfo publisher...')
-ssl_publisher = rospy.Publisher(nodename + '/' + 'SSL', SSLInfo, queue_size=10)
+
+queue = deque(100 * [(rospy.Time(), 0.0)])
+mutex = Lock()
+
+
+def handle_ssl_request(request):
+    start = request.start
+    end = request.end
+    angles = []
+    min_diff = genpy.Duration(sys.maxint)
+    mutex.acquire()
+    for value in queue:
+        if start < value[0] < end:
+            angles.append(value[1])
+        else:
+            before = start - value[0]
+            after = end - value[0]
+            if min(abs(before), abs(after)) < abs(min_diff):
+                min_diff = before if abs(before) < abs(after) else after
+
+    mutex.release()
+    response = SynchronizedSSLResponse()
+    rospy.loginfo('>>> Got request from %.2f to %.2f' % (start.to_sec(), end.to_sec()))
+    if start > end:
+        rospy.loginfo('>>> WARNING: start > end!!! this cannot work')
+    if len(angles) > 0:
+        response.angle = float(sum(angles)) / float(len(angles))
+        response.valid = True
+        rospy.loginfo('>>> Found %d matches' % len(angles))
+    else:
+        response.valid = False
+        rospy.loginfo('>>> No match in queue. min. diff: %.2f' % min_diff.to_sec())
+    return response
+
+
+# prepare audio grabber
+recorder = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NONBLOCK)
+CHANNELS = 4
+INFORMAT = alsaaudio.PCM_FORMAT_S16_LE
+RATE = 16000
+FRAMESIZE = 512
+recorder.setchannels(CHANNELS)
+recorder.setrate(RATE)
+recorder.setformat(INFORMAT)
+recorder.setperiodsize(FRAMESIZE)
+
+ssl_service = rospy.Service('pepper_ssl_service', SynchronizedSSL, handle_ssl_request)
 
 rospy.loginfo('Creating direction of arrival instance...')
-
 wrapper = DOA(data, plot=data['plot_spectra'])
 
-rospy.loginfo('Creating esiaf handler...')
-handler = pyesiaf.Esiaf_Handler(nodename, pyesiaf.NodeDesignation.SSL, sys.argv)
 
-rospy.loginfo('Setting up esiaf...')
-esiaf_format = pyesiaf.EsiafAudioFormat()
-esiaf_format.rate = pyesiaf.Rate.RATE_16000
-esiaf_format.bitrate = pyesiaf.Bitrate.BIT_INT_16_SIGNED
-esiaf_format.endian = pyesiaf.Endian.LittleEndian
-esiaf_format.channels = len(data['mic_array'])
+def grab_thread():
+    while not rospy.is_shutdown():
+        length, data = recorder.read()
+        usable_data = np.fromstring(data, dtype='int16')
+        interleaved_data = np.array([[usable_data[4*x], usable_data[4*x+1], usable_data[4*x+2], usable_data[4*x+3]] for x in range(len(usable_data)//4)])
+        deinterleaved_data = interleaved_data.transpose()
+        doa = wrapper.process_audio(deinterleaved_data)
 
-esiaf_audio_info = pyesiaf.EsiafAudioTopicInfo()
-esiaf_audio_info.topic = data['esiaf_input_topic']
-esiaf_audio_info.allowedFormat = esiaf_format
-
-
-rospy.loginfo('adding output topic...')
-esiaf_audio_out_info = pyesiaf.EsiafAudioTopicInfo()
-esiaf_audio_out_info.topic = data['esiaf_output_topic']
-esiaf_audio_out_info.allowedFormat = esiaf_format
-handler.add_output_topic(esiaf_audio_out_info)
-
-rospy.loginfo('adding input topic...')
+        mutex.acquire()
+        queue.append((rospy.Time.now(), doa))
+        queue.popleft()
+        mutex.release()
 
 
-def input_callback(audio, timeStamps):
-    # deserialize inputs
-    _recording_timestamps = RecordingTimeStamps()
-    msg_from_string(_recording_timestamps, timeStamps)
-
-    # call dao wrapper
-    doa = wrapper.process_audio(audio.transpose())
-    rospy.loginfo('DOA from ' + str(_recording_timestamps.finish.secs) + ': ' + str(doa))
-
-    # assemble output
-    doa_esiaf = SSLDir()
-    doa_esiaf.angleHorizontal = doa
-    doa_esiaf.angleVertical = 0.0
-    doa_esiaf.sourceId = 'no tracking'
-
-    doas = [msg_to_string(doa_esiaf)]
-    handler.set_ssl_dirs(data['esiaf_output_topic'], doas)
-
-    # publish output
-    handler.publish(data['esiaf_output_topic'],
-                    audio,
-                    timeStamps)
-
-    # assemble output
-    output = SSLInfo()
-    output.duration = _recording_timestamps
-    output.directions = [doa_esiaf]
-
-    ssl_publisher.publish(output)
-
-
-
-handler.add_input_topic(esiaf_audio_info, input_callback)
-rospy.loginfo('input topic added')
-handler.start_esiaf()
+t = Thread(target=grab_thread)
+t.start()
 
 rospy.loginfo('DOA ready!')
 rospy.spin()
 rospy.loginfo('Exiting...')
-
-#noise_mean = wrapper.noise_matrix
-#stri = '[' + ','.join([str(x) for x in noise_mean]) + ']'
-#rospy.loginfo(stri)
-
-handler.quit_esiaf()

@@ -1,4 +1,0 @@
-<launch>
-<arg name="path_to_config" />
-<node name="esiaf_doa" pkg="esiaf_doa" type="start_doa.py" output="screen" args="$(arg path_to_config)" />
-</launch>

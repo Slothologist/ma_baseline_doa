@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(esiaf_doa)
+project(ma_baseline_doa)
 
 ## Add support for C++11, supported in ROS Kinetic and newer
 add_definitions(-std=c++11)
@@ -9,7 +9,7 @@ add_definitions(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
         rospy
-        esiaf_ros
+        pepper_clf_msgs
         )
 
 

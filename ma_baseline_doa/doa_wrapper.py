@@ -1,5 +1,6 @@
 import pyroomacoustics as pra
 import numpy as np
+import math
 import_successful = None
 try:
     import matplotlib.pyplot as plt
@@ -9,7 +10,6 @@ except:
     import_successful = False
 else:
     import_successful = True
-import math
 
 
 # algorithms parameters
@@ -124,6 +124,4 @@ class DOA:
             with self.lock:
                 self.magnitude = mag
                 self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
-
-
         return doa[0]
