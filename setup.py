@@ -12,7 +12,7 @@ setup_args = generate_distutils_setup(
     license='---none---',
     install_requires=[
         'pyroomacoustics',
-        'alsaaudio'
+        'pyalsaaudio'
     ],
     packages=['ma_baseline_doa']
 
