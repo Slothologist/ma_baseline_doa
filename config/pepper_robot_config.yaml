@@ -1,5 +1,5 @@
 algorithm: SRP # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
-plot_spectra: True
+plot_spectra: False
 mic_array:
     channel_1:
         x: -0.0267

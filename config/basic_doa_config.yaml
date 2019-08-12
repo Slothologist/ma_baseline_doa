@@ -1,4 +1,5 @@
 algorithm: MUSIC # one of ['MUSIC', 'SRP', 'CSSM', 'WAVES', 'TOPS', 'FRIDA']
+plot_spectra: False
 mic_array:
     mic_1:
         x: -1.0
