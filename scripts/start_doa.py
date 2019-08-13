@@ -69,7 +69,7 @@ recorder = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NONBLOCK)
 CHANNELS = 4
 INFORMAT = alsaaudio.PCM_FORMAT_S16_LE
 RATE = 16000
-FRAMESIZE = 512
+FRAMESIZE = 2048
 recorder.setchannels(CHANNELS)
 recorder.setrate(RATE)
 recorder.setformat(INFORMAT)
