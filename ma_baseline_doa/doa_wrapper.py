@@ -124,4 +124,9 @@ class DOA:
             with self.lock:
                 self.magnitude = mag
                 self.c_dirty_img = np.r_[spatial_resp, spatial_resp[0]]
-        return doa[0] if len(doa) > 0 else 0.0
+
+        if len(doa) > 0:
+            doa = doa[0]
+        else:
+            doa = 0.0
+        return doa
